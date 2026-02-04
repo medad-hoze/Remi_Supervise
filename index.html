@@ -1138,8 +1138,8 @@
                             <th data-sort="BaalutBefoal">בעלות <span class="sort-icon">⇅</span></th>
                             <th data-sort="achuz_baalut_kkl">% בעלות נוכחי <span class="sort-icon">⇅</span></th>
                             <th data-sort="achuz_baalut_kkl_lastMonth">% בעלות קודם <span class="sort-icon">⇅</span></th>
-                            <th data-sort="ShetachBaalutKKL">שטח נוכחי <span class="sort-icon">⇅</span></th>
-                            <th data-sort="ShetachBaalutKKL_lastMonth">שטח קודם <span class="sort-icon">⇅</span></th>
+                            <th data-sort="Areakkl_total_current">שטח נוכחי <span class="sort-icon">⇅</span></th>
+                            <th data-sort="Areakkl_total_lastMonth">שטח קודם <span class="sort-icon">⇅</span></th>
                             <th data-sort="area_diff_calc">הפרש <span class="sort-icon">⇅</span></th>
                             <th data-sort="mavat_name_lastMonth">ייעוד קודם <span class="sort-icon">⇅</span></th>
                             <th data-sort="mavat_name_current">ייעוד נוכחי <span class="sort-icon">⇅</span></th>
@@ -1436,8 +1436,8 @@
                     const status = p.type_status;
                     
                     // Calculate area diff dynamically
-                    const shetachCurrent = p.ShetachBaalutKKL || 0;
-                    const shetachPrev = p.ShetachBaalutKKL_lastMonth || 0;
+                    const shetachCurrent = p.Areakkl_total_current || 0;
+                    const shetachPrev = p.Areakkl_total_lastMonth || 0;
                     const areaDiff = shetachCurrent - shetachPrev;
                     
                     // Outline color by status
@@ -1471,10 +1471,10 @@
                     featureLayers.set(p.key, layer);
                     
                     // Calculate area diff dynamically
-                    const shetachCurrent = p.ShetachBaalutKKL || 0;
-                    const shetachPrev = p.ShetachBaalutKKL_lastMonth || 0;
-                    const areaDiffCalc = shetachCurrent - shetachPrev;
-                    
+                    const shetachCurrent = p.Areakkl_total_current || 0;
+                    const shetachPrev = p.Areakkl_total_lastMonth || 0;
+                    let areaDiffCalc = shetachCurrent - shetachPrev;
+                    if (areaDiffCalc === 0) areaDiffCalc = 0;           
                     const popupContent = `
                         <div class="popup-content">
                             <div class="popup-header">גוש ${p.GUSH} חלקה ${p.MisparHelka}</div>
@@ -1488,7 +1488,7 @@
                             </div>
                             <div class="popup-row">
                                 <span class="popup-label">שטח נוכחי:</span>
-                                <span class="popup-value">${formatNumber(p.ShetachBaalutKKL)} מ"ר</span>
+                                <span class="popup-value">${formatNumber(p.Areakkl_total_current)} מ"ר</span>
                             </div>
                             <div class="popup-row">
                                 <span class="popup-label">הפרש שטח:</span>
@@ -1584,8 +1584,8 @@
                 
                 // Additional filters
                 if (changesOnly === 'area-changed') {
-                    const curr = p.ShetachBaalutKKL || 0;
-                    const prev = p.ShetachBaalutKKL_lastMonth || 0;
+                    const curr = p.Areakkl_total_current || 0;
+                    const prev = p.Areakkl_total_lastMonth || 0;
                     if ((curr - prev) === 0) return false;
                 }
                 if (changesOnly === 'mavat-changed') {
@@ -1738,8 +1738,8 @@
                 const actualMavatChanged = p.mavat_changed && !(prevEmpty && currentEmpty);
                 
                 // Calculate area diff dynamically
-                const shetachCurrent = p.ShetachBaalutKKL || 0;
-                const shetachPrev = p.ShetachBaalutKKL_lastMonth || 0;
+                const shetachCurrent = p.Areakkl_total_current || 0;
+                const shetachPrev = p.Areakkl_total_lastMonth || 0;
                 const areaDiffCalc = shetachCurrent - shetachPrev;
                 
                 tr.innerHTML = `
@@ -1750,8 +1750,8 @@
                     <td>${p.BaalutBefoal || '-'}</td>
                     <td>${formatPercent(p.achuz_baalut_kkl)}</td>
                     <td>${formatPercent(p.achuz_baalut_kkl_lastMonth)}</td>
-                    <td>${formatNumber(p.ShetachBaalutKKL)}</td>
-                    <td>${formatNumber(p.ShetachBaalutKKL_lastMonth)}</td>
+                    <td>${formatNumber(p.Areakkl_total_current)}</td>
+                    <td>${formatNumber(p.Areakkl_total_lastMonth)}</td>
                     <td><span class="badge ${getBadgeClass(areaDiffCalc)}">${formatNumber(areaDiffCalc)}</span></td>
                     <td class="${actualMavatChanged ? 'mavat-changed' : ''}">${p.mavat_name_lastMonth || '-'}</td>
                     <td class="${actualMavatChanged ? 'mavat-changed' : ''}">${p.mavat_name_current || '-'}</td>
@@ -1790,13 +1790,14 @@
         }
         
         // Utility functions
-        function formatNumber(num, decimals = 2) {
-            if (num === null || num === undefined) return '-';
-            return new Intl.NumberFormat('he-IL', {
-                maximumFractionDigits: decimals,
-                minimumFractionDigits: 0
-            }).format(num);
-        }
+            function formatNumber(num, decimals = 2) {
+                if (num === null || num === undefined) return '-';
+                if (Object.is(num, -0) || num === 0) num = 0; // Fix -0
+                return new Intl.NumberFormat('he-IL', {
+                    maximumFractionDigits: decimals,
+                    minimumFractionDigits: 0
+                }).format(num);
+            }
         
         function formatPercent(num) {
             if (num === null || num === undefined) return '-';
@@ -1899,13 +1900,13 @@
             const withoutGeometry = total - withGeometry;
             
             const areaIncreased = data.filter(f => {
-                const curr = f.properties.ShetachBaalutKKL || 0;
-                const prev = f.properties.ShetachBaalutKKL_lastMonth || 0;
+                const curr = f.properties.Areakkl_total_current || 0;
+                const prev = f.properties.Areakkl_total_lastMonth || 0;
                 return (curr - prev) > 0;
             }).length;
             const areaDecreased = data.filter(f => {
-                const curr = f.properties.ShetachBaalutKKL || 0;
-                const prev = f.properties.ShetachBaalutKKL_lastMonth || 0;
+                const curr = f.properties.Areakkl_total_current || 0;
+                const prev = f.properties.Areakkl_total_lastMonth || 0;
                 return (curr - prev) < 0;
             }).length;
             const areaUnchanged = total - areaIncreased - areaDecreased;
@@ -2087,8 +2088,8 @@
                 else if (p.type_status === 'changed') statusHeb = 'שונה';
                 
                 // Calculate area diff dynamically
-                const shetachCurrent = p.ShetachBaalutKKL || 0;
-                const shetachPrev = p.ShetachBaalutKKL_lastMonth || 0;
+                const shetachCurrent = p.Areakkl_total_current || 0;
+                const shetachPrev = p.Areakkl_total_lastMonth || 0;
                 const areaDiffCalc = shetachCurrent - shetachPrev;
                 
                 return {
@@ -2099,8 +2100,8 @@
                     'בעלות': p.BaalutBefoal || '',
                     '% בעלות נוכחי': p.achuz_baalut_kkl || '',
                     '% בעלות קודם': p.achuz_baalut_kkl_lastMonth || '',
-                    'שטח נוכחי': p.ShetachBaalutKKL || '',
-                    'שטח קודם': p.ShetachBaalutKKL_lastMonth || '',
+                    'שטח נוכחי': p.Areakkl_total_current || '',
+                    'שטח קודם': p.Areakkl_total_lastMonth || '',
                     'הפרש שטח': areaDiffCalc,
                     'ייעוד קודם': p.mavat_name_lastMonth || '',
                     'ייעוד נוכחי': p.mavat_name_current || '',
